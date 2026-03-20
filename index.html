@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Planner - Sistema Seguro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="loginScreen" class="login-overlay">
+        <div class="login-box">
+            <div class="login-header">
+                <div class="logo-icon">🔐</div>
+                <h2>PLANNER ACCESS</h2>
+                <p>Sistema de Planejamento Coorporativo</p>
+            </div>
+            <form id="loginForm">
+                <div class="input-group">
+                    <input type="password" id="passwordInput" placeholder="Digite a senha" maxlength="6" required>
+                </div>
+                <button type="submit" class="btn-tech">AUTENTICAR</button>
+                <p id="loginError" class="error-msg hidden">Acesso Negado. Senha incorreta.</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- APLICAÇÃO PRINCIPAL -->
+    <div id="appContainer" class="app-container hidden">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <span class="brand-dot"></span>
+                    <h2>Planner</h2>
+                </div>
+                <button id="btnNewUser" class="btn-icon-tech" title="Novo Usuário" type="button">+</button>
+            </div>
+
+            <div class="user-section-title">USUÁRIOS</div>
+            <div class="user-list" id="userList"></div>
+
+            <div class="sidebar-footer">
+                <button id="btnLogout" class="btn-logout">
+                    <span>Sair do Sistema</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="planner-header">
+                <div class="welcome-area">
+                    <h1 id="headerUserName">Bem-vindo</h1>
+                    <p id="headerDate" class="tech-text">--/--/----</p>
+                </div>
+                <div class="header-actions">
+                    <button id="btnAddTask" class="btn-tech-glow" type="button">
+                        <span>+ Nova Missão</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="planner-body">
+                
+                <!-- Sidebar Esquerda (Calendário + Métricas) -->
+                <section class="left-sidebar">
+                    <!-- Calendário Compacto -->
+                    <div class="glass-card calendar-card compact">
+                        <div class="calendar-header">
+                            <button id="prevMonth" type="button">&lt;</button>
+                            <h2 id="currentMonthYear">Janeiro</h2>
+                            <button id="nextMonth" type="button">&gt;</button>
+                        </div>
+                        <div class="weekdays">
+                            <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+                        </div>
+                        <div class="days-grid" id="calendarGrid"></div>
+                    </div>
+
+                    <!-- Métricas Compactas -->
+                    <div class="glass-card stats-card compact">
+                        <div class="stats-grid-compact">
+                            <div class="stat-item-compact danger">
+                                <span id="statOverdue">0</span>
+                                <small>Vencidas</small>
+                            </div>
+                            <div class="stat-item-compact warning">
+                                <span id="statNear">0</span>
+                                <small>Próximas</small>
+                            </div>
+                            <div class="stat-item-compact info">
+                                <span id="statToday">0</span>
+                                <small>Hoje</small>
+                            </div>
+                            <div class="stat-item-compact success">
+                                <span id="statDone">0</span>
+                                <small>Concluído</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alertas de Vencimento -->
+                    <div class="glass-card alerts-card compact">
+                        <h3>⚠ Alertas</h3>
+                        <div id="alertsList" class="alerts-list"></div>
+                    </div>
+                </section>
+
+                <!-- Área Principal de Atividades -->
+                <section class="main-tasks-area">
+                    <div class="tasks-section glass-card">
+                        <div class="tasks-header">
+                            <h2 id="selectedDateLabel">Registro do Dia</h2>
+                            <div class="filters">
+                                <button class="filter active" data-filter="all" type="button">Tudo</button>
+                                <button class="filter" data-filter="pending" type="button">Pendentes</button>
+                                <button class="filter" data-filter="done" type="button">Feitas</button>
+                            </div>
+                        </div>
+                        <div class="tasks-list" id="tasksList"></div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Footer Fixo -->
+            <footer class="fixed-footer">
+                <p>Desenvolvido por Laís Mendes | 2026</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Modal: Criar Usuário -->
+    <div id="userModal" class="modal-overlay hidden">
+        <div class="modal-content glass-modal">
+            <div class="modal-header">
+                <h3>Novo Operador</h3>
+                <button type="button" class="btn-icon close-modal" id="btnCloseUserModal">&times;</button>
+            </div>
+            <form id="userForm">
+                <div class="form-group">
+                    <label>Nome do Usuário</label>
+                    <input type="text" id="newUserName" required placeholder="Ex: John Doe" autocomplete="off">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-text" id="btnCancelUser">Cancelar</button>
+                    <button type="submit" class="btn-tech">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Tarefa -->
+    <div id="taskModal" class="modal-overlay hidden">
+        <div class="modal-content glass-modal large">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nova Missão</h3>
+                <button type="button" class="btn-icon close-modal" id="btnCloseTaskModal">&times;</button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                
+                <div class="form-group">
+                    <label>Objetivo Principal</label>
+                    <input type="text" id="taskTitle" required placeholder="Descreva a tarefa..." autocomplete="off">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data de Criação (Registro)</label>
+                        <input type="date" id="taskCreatedDate" required>
+                        <small class="help-text">Dia em que esta tarefa foi registrada</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Vencimento</label>
+                        <input type="date" id="taskDueDate" required>
+                        <small class="help-text">Prazo final para entrega</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="taskPriority">
+                        <option value="low">Baixa</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Sub-rotinas (Checklist)</label>
+                    <div id="subtasksContainer" class="subtasks-list"></div>
+                    <button type="button" id="btnAddSubtask" class="btn-link">+ Adicionar sub-rotina</button>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-text" id="btnCancelTask">Cancelar</button>
+                    <button type="submit" class="btn-tech">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
