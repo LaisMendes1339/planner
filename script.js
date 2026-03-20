@@ -1,94 +1,94 @@
+// ============================================
+// NEXUS PLANNER - SISTEMA SEGURO
+// Senha: 061098
+// Desenvolvido por Laís Mendes | 2026
+// ============================================
+
 // Configurações
 const CONFIG = {
     PASSWORD: '061098',
-    USE_FIREBASE: true // Altere para false para usar localStorage
+    STORAGE_KEY: 'nexus_planner_data_v7'
 };
 
-// Estado
+// Estado da aplicação
 let state = {
     users: [],
     currentUserIndex: null,
     selectedDate: new Date(),
     currentDateView: new Date(),
-    filter: 'all',
-    firebaseService: null
+    filter: 'all'
 };
 
-// DOM Elements
+// Elementos do DOM
 let DOM = {};
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', async function() {
-    await init();
+// Inicialização - Aguarda DOM estar completo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Nexus Planner - Iniciando...');
+    init();
 });
 
-async function init() {
-    // Inicializar Firebase se configurado
-    if (CONFIG.USE_FIREBASE) {
-        try {
-            const { firebaseService } = await import('./firebase-service.js');
-            await firebaseService.init();
-            state.firebaseService = firebaseService;
-            console.log('✅ Firebase conectado');
-        } catch (error) {
-            console.warn('⚠️ Firebase não disponível, usando localStorage:', error);
-            CONFIG.USE_FIREBASE = false;
-        }
+function init() {
+    // Verifica se todos os elementos existem
+    try {
+        DOM = {
+            loginScreen: document.getElementById('loginScreen'),
+            appContainer: document.getElementById('appContainer'),
+            loginForm: document.getElementById('loginForm'),
+            passwordInput: document.getElementById('passwordInput'),
+            loginError: document.getElementById('loginError'),
+            btnLogout: document.getElementById('btnLogout'),
+            userList: document.getElementById('userList'),
+            headerUserName: document.getElementById('headerUserName'),
+            headerDate: document.getElementById('headerDate'),
+            calendarGrid: document.getElementById('calendarGrid'),
+            currentMonthYear: document.getElementById('currentMonthYear'),
+            tasksList: document.getElementById('tasksList'),
+            selectedDateLabel: document.getElementById('selectedDateLabel'),
+            alertsList: document.getElementById('alertsList'),
+            stats: {
+                overdue: document.getElementById('statOverdue'),
+                near: document.getElementById('statNear'),
+                today: document.getElementById('statToday'),
+                done: document.getElementById('statDone')
+            },
+            modals: {
+                user: document.getElementById('userModal'),
+                task: document.getElementById('taskModal')
+            },
+            forms: {
+                user: document.getElementById('userForm'),
+                task: document.getElementById('taskForm')
+            },
+            inputs: {
+                newUserName: document.getElementById('newUserName'),
+                taskId: document.getElementById('taskId'),
+                taskTitle: document.getElementById('taskTitle'),
+                taskCreatedDate: document.getElementById('taskCreatedDate'),
+                taskDueDate: document.getElementById('taskDueDate'),
+                taskPriority: document.getElementById('taskPriority'),
+                subtasksContainer: document.getElementById('subtasksContainer')
+            },
+            buttons: {
+                prevMonth: document.getElementById('prevMonth'),
+                nextMonth: document.getElementById('nextMonth'),
+                btnNewUser: document.getElementById('btnNewUser'),
+                btnAddTask: document.getElementById('btnAddTask'),
+                btnAddSubtask: document.getElementById('btnAddSubtask'),
+                btnCancelUser: document.getElementById('btnCancelUser'),
+                btnCancelTask: document.getElementById('btnCancelTask'),
+                btnCloseUserModal: document.getElementById('btnCloseUserModal'),
+                btnCloseTaskModal: document.getElementById('btnCloseTaskModal')
+            }
+        };
+
+        console.log('DOM inicializado com sucesso');
+        checkSession();
+        setupEventListeners();
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        alert('Erro ao carregar o sistema. Atualize a página (F5).');
     }
-
-    DOM = {
-        loginScreen: document.getElementById('loginScreen'),
-        appContainer: document.getElementById('appContainer'),
-        loginForm: document.getElementById('loginForm'),
-        passwordInput: document.getElementById('passwordInput'),
-        loginError: document.getElementById('loginError'),
-        btnLogout: document.getElementById('btnLogout'),
-        userList: document.getElementById('userList'),
-        headerUserName: document.getElementById('headerUserName'),
-        headerDate: document.getElementById('headerDate'),
-        calendarGrid: document.getElementById('calendarGrid'),
-        currentMonthYear: document.getElementById('currentMonthYear'),
-        tasksList: document.getElementById('tasksList'),
-        selectedDateLabel: document.getElementById('selectedDateLabel'),
-        alertsList: document.getElementById('alertsList'),
-        stats: {
-            overdue: document.getElementById('statOverdue'),
-            near: document.getElementById('statNear'),
-            today: document.getElementById('statToday'),
-            done: document.getElementById('statDone')
-        },
-        modals: {
-            user: document.getElementById('userModal'),
-            task: document.getElementById('taskModal')
-        },
-        forms: {
-            user: document.getElementById('userForm'),
-            task: document.getElementById('taskForm')
-        },
-        inputs: {
-            newUserName: document.getElementById('newUserName'),
-            taskId: document.getElementById('taskId'),
-            taskTitle: document.getElementById('taskTitle'),
-            taskCreatedDate: document.getElementById('taskCreatedDate'),
-            taskDueDate: document.getElementById('taskDueDate'),
-            taskPriority: document.getElementById('taskPriority'),
-            subtasksContainer: document.getElementById('subtasksContainer')
-        },
-        buttons: {
-            prevMonth: document.getElementById('prevMonth'),
-            nextMonth: document.getElementById('nextMonth'),
-            btnNewUser: document.getElementById('btnNewUser'),
-            btnAddTask: document.getElementById('btnAddTask'),
-            btnAddSubtask: document.getElementById('btnAddSubtask'),
-            btnCancelUser: document.getElementById('btnCancelUser'),
-            btnCancelTask: document.getElementById('btnCancelTask'),
-            btnCloseUserModal: document.getElementById('btnCloseUserModal'),
-            btnCloseTaskModal: document.getElementById('btnCloseTaskModal')
-        }
-    };
-
-    checkSession();
-    setupEventListeners();
 }
 
 // Obter data local no formato YYYY-MM-DD
@@ -96,183 +96,160 @@ function getLocalDateString(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return year + '-' + month + '-' + day;
 }
 
-// Converter string de data para objeto Date (considerando timezone local)
+// Converter string de data para objeto Date
 function parseLocalDate(dateString) {
     const parts = dateString.split('-');
     return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
 // Verificar sessão
-async function checkSession() {
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        const session = await state.firebaseService.getSession();
-        if (session?.authenticated) {
-            loadApp();
-            return;
-        }
-    } else {
+function checkSession() {
+    try {
         const session = localStorage.getItem('nexus_session');
+        console.log('Sessão:', session);
+        
         if (session === 'active') {
             loadApp();
-            return;
+        } else {
+            if (DOM.loginScreen) DOM.loginScreen.classList.remove('hidden');
+            if (DOM.appContainer) DOM.appContainer.classList.add('hidden');
         }
+    } catch (error) {
+        console.error('Erro ao verificar sessão:', error);
+        // Mostra tela de login em caso de erro
+        if (DOM.loginScreen) DOM.loginScreen.classList.remove('hidden');
+        if (DOM.appContainer) DOM.appContainer.classList.add('hidden');
     }
-    
-    DOM.loginScreen.classList.remove('hidden');
-    DOM.appContainer.classList.add('hidden');
 }
 
 // Login
-async function handleLogin(e) {
+function handleLogin(e) {
     e.preventDefault();
+    
+    if (!DOM.passwordInput) {
+        console.error('Input de senha não encontrado');
+        return;
+    }
+    
     const password = DOM.passwordInput.value;
+    console.log('Tentativa de login - Senha digitada:', password);
+    console.log('Senha correta:', CONFIG.PASSWORD);
     
     if (password === CONFIG.PASSWORD) {
-        if (CONFIG.USE_FIREBASE && state.firebaseService) {
-            await state.firebaseService.saveSession({ authenticated: true, loginAt: Date.now() });
-        } else {
+        try {
             localStorage.setItem('nexus_session', 'active');
+            console.log('Login bem-sucedido!');
+            
+            if (DOM.loginScreen) DOM.loginScreen.classList.add('hidden');
+            if (DOM.appContainer) DOM.appContainer.classList.remove('hidden');
+            
+            loadApp();
+        } catch (error) {
+            console.error('Erro no login:', error);
+            alert('Erro ao fazer login. Tente novamente.');
         }
-        
-        DOM.loginScreen.classList.add('hidden');
-        DOM.appContainer.classList.remove('hidden');
-        await loadApp();
     } else {
-        DOM.loginError.classList.remove('hidden');
-        DOM.passwordInput.value = '';
-        DOM.passwordInput.focus();
-        DOM.loginForm.style.animation = 'shake 0.5s';
-        setTimeout(() => { DOM.loginForm.style.animation = ''; }, 500);
+        console.log('Senha incorreta!');
+        if (DOM.loginError) DOM.loginError.classList.remove('hidden');
+        if (DOM.passwordInput) {
+            DOM.passwordInput.value = '';
+            DOM.passwordInput.focus();
+        }
+        if (DOM.loginForm) {
+            DOM.loginForm.style.animation = 'shake 0.5s';
+            setTimeout(function() { 
+                DOM.loginForm.style.animation = ''; 
+            }, 500);
+        }
     }
 }
 
 // Logout
-async function handleLogout() {
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        await state.firebaseService.clearSession();
-        state.firebaseService.cleanup();
-    } else {
+function handleLogout() {
+    try {
         localStorage.removeItem('nexus_session');
+        location.reload();
+    } catch (error) {
+        console.error('Erro no logout:', error);
+        location.reload();
     }
-    location.reload();
 }
 
 // Carregar app
-async function loadApp() {
-    await loadData();
+function loadApp() {
+    console.log('Carregando aplicação...');
+    loadData();
+    
     if (state.users.length === 0) {
-        await createUser('Admin');
+        console.log('Nenhum usuário encontrado, criando Admin...');
+        createUser('Admin');
     } else {
+        console.log('Usuários encontrados:', state.users.length);
         selectUser(0);
     }
 }
 
-// Carregar dados
-async function loadData() {
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        try {
-            state.users = await state.firebaseService.getAllUsers();
-        } catch (error) {
-            console.error('Erro ao carregar do Firebase:', error);
-            // Fallback para localStorage
-            const stored = localStorage.getItem('nexus_planner_data_v7');
-            if (stored) {
-                state.users = JSON.parse(stored);
-            }
-        }
-    } else {
-        const stored = localStorage.getItem('nexus_planner_data_v7');
+// Carregar dados do localStorage
+function loadData() {
+    try {
+        const stored = localStorage.getItem(CONFIG.STORAGE_KEY);
+        console.log('Dados carregados do localStorage:', stored ? 'Sim' : 'Não');
+        
         if (stored) {
-            try {
-                state.users = JSON.parse(stored);
-            } catch (e) {
-                console.error('Erro ao parsear localStorage:', e);
-                state.users = [];
-            }
+            state.users = JSON.parse(stored);
+        } else {
+            state.users = [];
         }
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        state.users = [];
     }
 }
 
-// Salvar dados
-async function saveData() {
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        // Salva usuário por usuário no Firebase
-        for (const user of state.users) {
-            try {
-                await state.firebaseService.updateUser(user.id, {
-                    name: user.name,
-                    tasks: user.tasks,
-                    updatedAt: Date.now()
-                });
-            } catch (error) {
-                console.error(`Erro ao salvar usuário ${user.id}:`, error);
-            }
-        }
-    }
-    
-    // Sempre mantém backup no localStorage
+// Salvar dados no localStorage
+function saveData() {
     try {
-        localStorage.setItem('nexus_planner_data_v7', JSON.stringify(state.users));
-    } catch (e) {
-        console.error('Erro ao salvar no localStorage:', e);
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(state.users));
+        console.log('Dados salvos com sucesso');
+        
+        renderUserList();
+        updateStats();
+        renderAlerts();
+    } catch (error) {
+        console.error('Erro ao salvar dados:', error);
+        alert('Erro ao salvar dados. Verifique se o localStorage está habilitado.');
     }
-    
-    renderUserList();
-    updateStats();
-    renderAlerts();
 }
 
 // Criar usuário
-async function createUser(name) {
+function createUser(name) {
     const newUser = { 
         id: Date.now().toString(), 
         name: name, 
-        tasks: {}
+        tasks: [] 
     };
-    
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        try {
-            const created = await state.firebaseService.createUser({ name });
-            state.users.push(created);
-        } catch (error) {
-            console.error('Erro no Firebase, criando localmente:', error);
-            state.users.push(newUser);
-        }
-    } else {
-        state.users.push(newUser);
-    }
-    
-    await saveData();
+    state.users.push(newUser);
+    saveData();
     selectUser(state.users.length - 1);
     closeModal('user');
-    DOM.inputs.newUserName.value = '';
+    if (DOM.inputs.newUserName) DOM.inputs.newUserName.value = '';
 }
 
 // Deletar usuário
-async function deleteUser(index, event) {
+function deleteUser(index, event) {
     if (event) event.stopPropagation();
     
     if (state.users.length === 1) {
-        alert("Não é possível excluir o último usuário.");
+        alert('Não é possível excluir o último usuário.');
         return;
     }
     
-    if (confirm(`Excluir usuário "${state.users[index].name}"?`)) {
-        const userId = state.users[index].id;
-        
-        if (CONFIG.USE_FIREBASE && state.firebaseService) {
-            try {
-                await state.firebaseService.deleteUser(userId);
-            } catch (error) {
-                console.error('Erro ao deletar no Firebase:', error);
-            }
-        }
-        
+    if (confirm('Excluir usuário "' + state.users[index].name + '"?')) {
         state.users.splice(index, 1);
-        await saveData();
+        saveData();
         
         if (index === state.currentUserIndex) {
             selectUser(0);
@@ -291,23 +268,6 @@ function selectUser(index) {
     renderTasks();
     updateHeader();
     renderAlerts();
-    
-    // Setup listener em tempo real para este usuário (Firebase)
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        const currentUser = state.users[index];
-        if (currentUser) {
-            state.firebaseService.onTasksChange(currentUser.id, (tasks) => {
-                // Atualiza tasks do usuário
-                state.users[index].tasks = tasks || {};
-                if (index === state.currentUserIndex) {
-                    renderTasks();
-                    renderCalendar();
-                    renderAlerts();
-                    updateStats();
-                }
-            });
-        }
-    }
 }
 
 // Obter usuário atual
@@ -316,119 +276,60 @@ function getCurrentUser() {
 }
 
 // Criar tarefa
-async function createTask(taskData) {
+function createTask(taskData) {
     const user = getCurrentUser();
-    
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        try {
-            const created = await state.firebaseService.createTask(user.id, taskData);
-            if (!user.tasks) user.tasks = {};
-            user.tasks[created.id] = created;
-        } catch (error) {
-            console.error('Erro ao criar no Firebase:', error);
-            // Fallback local
-            if (!user.tasks) user.tasks = {};
-            user.tasks[taskData.id] = taskData;
-        }
-    } else {
-        if (!user.tasks) user.tasks = {};
-        user.tasks[taskData.id] = taskData;
-    }
-    
-    await saveData();
+    user.tasks.push(taskData);
+    saveData();
     renderTasks();
     renderCalendar();
     closeModal('task');
 }
 
 // Atualizar tarefa
-async function updateTask(id, updatedData) {
+function updateTask(id, updatedData) {
     const user = getCurrentUser();
+    const taskIndex = user.tasks.findIndex(function(t) { return t.id === id; });
     
-    if (CONFIG.USE_FIREBASE && state.firebaseService && user.tasks?.[id]) {
-        try {
-            await state.firebaseService.updateTask(user.id, id, updatedData);
-        } catch (error) {
-            console.error('Erro ao atualizar no Firebase:', error);
-        }
+    if (taskIndex > -1) {
+        updatedData.completed = user.tasks[taskIndex].completed;
+        user.tasks[taskIndex] = Object.assign({}, user.tasks[taskIndex], updatedData);
+        saveData();
+        renderTasks();
+        renderCalendar();
+        closeModal('task');
     }
-    
-    if (user.tasks?.[id]) {
-        user.tasks[id] = { 
-            ...user.tasks[id], 
-            ...updatedData,
-            completed: user.tasks[id].completed // Mantém status se não foi alterado
-        };
-    }
-    
-    await saveData();
-    renderTasks();
-    renderCalendar();
-    closeModal('task');
 }
 
 // Deletar tarefa
-window.deleteTask = async function(id) {
+window.deleteTask = function(id) {
     if (!confirm('Excluir esta tarefa?')) return;
     const user = getCurrentUser();
-    
-    if (CONFIG.USE_FIREBASE && state.firebaseService) {
-        try {
-            await state.firebaseService.deleteTask(user.id, id);
-        } catch (error) {
-            console.error('Erro ao deletar no Firebase:', error);
-        }
-    }
-    
-    if (user.tasks?.[id]) {
-        delete user.tasks[id];
-    }
-    
-    await saveData();
+    user.tasks = user.tasks.filter(function(t) { return t.id !== id; });
+    saveData();
     renderTasks();
     renderCalendar();
 };
 
 // Toggle tarefa
-window.toggleTask = async function(id) {
+window.toggleTask = function(id) {
     const user = getCurrentUser();
-    const task = user.tasks?.[id];
-    
+    const task = user.tasks.find(function(t) { return t.id === id; });
     if (task) {
         task.completed = !task.completed;
-        
-        if (CONFIG.USE_FIREBASE && state.firebaseService) {
-            try {
-                await state.firebaseService.updateTask(user.id, id, { completed: task.completed });
-            } catch (error) {
-                console.error('Erro ao atualizar status:', error);
-            }
-        }
-        
-        await saveData();
+        saveData();
         renderTasks();
     }
 };
 
 // Toggle sub-tarefa
-window.toggleSubtask = async function(taskId, subtaskId) {
+window.toggleSubtask = function(taskId, subtaskId) {
     const user = getCurrentUser();
-    const task = user.tasks?.[taskId];
-    
-    if (task?.subtasks) {
-        const sub = task.subtasks.find(s => s.id === subtaskId);
+    const task = user.tasks.find(function(t) { return t.id === taskId; });
+    if (task && task.subtasks) {
+        const sub = task.subtasks.find(function(s) { return s.id === subtaskId; });
         if (sub) {
             sub.completed = !sub.completed;
-            
-            if (CONFIG.USE_FIREBASE && state.firebaseService) {
-                try {
-                    await state.firebaseService.updateTask(user.id, taskId, { subtasks: task.subtasks });
-                } catch (error) {
-                    console.error('Erro ao atualizar subtask:', error);
-                }
-            }
-            
-            await saveData();
+            saveData();
             renderTasks();
         }
     }
@@ -436,8 +337,8 @@ window.toggleSubtask = async function(taskId, subtaskId) {
 
 // Toggle expandir/colapsar subtasks
 window.toggleSubtasksExpand = function(taskId) {
-    const wrapper = document.getElementById(`subtasks-${taskId}`);
-    const toggle = document.querySelector(`[onclick="toggleSubtasksExpand('${taskId}')"]`);
+    const wrapper = document.getElementById('subtasks-' + taskId);
+    const toggle = document.querySelector('[onclick="toggleSubtasksExpand(\'' + taskId + '\')"]');
     if (wrapper) {
         wrapper.classList.toggle('expanded');
         if (toggle) {
@@ -449,7 +350,7 @@ window.toggleSubtasksExpand = function(taskId) {
 // Abrir edição
 window.openEditModal = function(id) {
     const user = getCurrentUser();
-    const task = user.tasks?.[id];
+    const task = user.tasks.find(function(t) { return t.id === id; });
     if (!task) return;
     
     openModal('task');
@@ -462,29 +363,25 @@ window.openEditModal = function(id) {
     
     DOM.inputs.subtasksContainer.innerHTML = '';
     if (task.subtasks) {
-        task.subtasks.forEach(sub => addSubtaskInput(sub.title));
+        task.subtasks.forEach(function(sub) { addSubtaskInput(sub.title); });
     }
 };
 
 // Renderizar usuários
 function renderUserList() {
+    if (!DOM.userList) return;
+    
     DOM.userList.innerHTML = '';
-    state.users.forEach((user, index) => {
+    state.users.forEach(function(user, index) {
         const el = document.createElement('div');
-        el.className = `user-item ${index === state.currentUserIndex ? 'active' : ''}`;
-        el.onclick = () => selectUser(index);
+        el.className = 'user-item' + (index === state.currentUserIndex ? ' active' : '');
+        el.onclick = function() { selectUser(index); };
         
         const initial = user.name.charAt(0).toUpperCase();
-        el.innerHTML = `
-            <div class="user-info">
-                <div class="user-avatar">${initial}</div>
-                <span>${user.name}</span>
-            </div>
-            <button class="btn-delete-user" type="button" title="Excluir">&times;</button>
-        `;
+        el.innerHTML = '<div class="user-info"><div class="user-avatar">' + initial + '</div><span>' + user.name + '</span></div><button class="btn-delete-user" type="button" title="Excluir">×</button>';
         
         const deleteBtn = el.querySelector('.btn-delete-user');
-        deleteBtn.onclick = (e) => deleteUser(index, e);
+        deleteBtn.onclick = function(e) { deleteUser(index, e); };
         
         DOM.userList.appendChild(el);
     });
@@ -493,18 +390,20 @@ function renderUserList() {
 // Atualizar header
 function updateHeader() {
     const user = getCurrentUser();
-    DOM.headerUserName.textContent = `OPERADOR: ${user.name.toUpperCase()}`;
+    DOM.headerUserName.textContent = 'OPERADOR: ' + user.name.toUpperCase();
     const dateOpts = { weekday: 'long', day: 'numeric', month: 'long' };
     DOM.headerDate.textContent = state.selectedDate.toLocaleDateString('pt-BR', dateOpts);
 }
 
 // Renderizar calendário
 function renderCalendar() {
+    if (!DOM.calendarGrid) return;
+    
     const year = state.currentDateView.getFullYear();
     const month = state.currentDateView.getMonth();
     
     const monthName = state.currentDateView.toLocaleString('pt-BR', { month: 'long' });
-    DOM.currentMonthYear.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`;
+    DOM.currentMonthYear.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ' ' + year;
     
     DOM.calendarGrid.innerHTML = '';
     
@@ -528,15 +427,15 @@ function renderCalendar() {
         if (isSameDate(date, today)) cell.classList.add('today');
         if (isSameDate(date, state.selectedDate)) cell.classList.add('selected');
         
-        const dayTasks = user.tasks ? Object.values(user.tasks).filter(t => {
+        const dayTasks = user.tasks.filter(function(t) {
             const createdDate = parseLocalDate(t.createdDate);
             return isSameDate(createdDate, date);
-        }) : [];
+        });
         
         if (dayTasks.length > 0) {
             cell.classList.add('has-task');
             
-            const hasUrgent = dayTasks.some(t => {
+            const hasUrgent = dayTasks.some(function(t) {
                 if (t.completed) return false;
                 const dueDate = parseLocalDate(t.dueDate);
                 const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
@@ -546,7 +445,7 @@ function renderCalendar() {
             if (hasUrgent) cell.classList.add('near-deadline');
         }
         
-        cell.onclick = () => {
+        cell.onclick = function() {
             state.selectedDate = new Date(year, month, day);
             updateHeader();
             renderCalendar();
@@ -557,8 +456,10 @@ function renderCalendar() {
     }
 }
 
-// Renderizar alertas de vencimento
+// Renderizar alertas
 function renderAlerts() {
+    if (!DOM.alertsList) return;
+    
     const user = getCurrentUser();
     DOM.alertsList.innerHTML = '';
     
@@ -566,9 +467,8 @@ function renderAlerts() {
     today.setHours(0, 0, 0, 0);
     
     const alerts = [];
-    const tasks = user.tasks ? Object.values(user.tasks) : [];
     
-    tasks.forEach(task => {
+    user.tasks.forEach(function(task) {
         if (task.completed) return;
         
         const dueDate = parseLocalDate(task.dueDate);
@@ -582,7 +482,7 @@ function renderAlerts() {
                 task: task,
                 days: Math.abs(diffDays),
                 type: 'overdue',
-                message: `VENCEU há ${Math.abs(diffDays)} dia(s)`,
+                message: 'VENCEU há ' + Math.abs(diffDays) + ' dia(s)',
                 createdOn: parseLocalDate(task.createdDate).toLocaleDateString('pt-BR')
             });
         } else if (diffDays === 0) {
@@ -598,28 +498,24 @@ function renderAlerts() {
                 task: task,
                 days: diffDays,
                 type: 'near',
-                message: `Vence em ${diffDays} dia(s)`,
+                message: 'Vence em ' + diffDays + ' dia(s)',
                 createdOn: parseLocalDate(task.createdDate).toLocaleDateString('pt-BR')
             });
         }
     });
     
-    alerts.sort((a, b) => a.days - b.days);
+    alerts.sort(function(a, b) { return a.days - b.days; });
     
     if (alerts.length === 0) {
         DOM.alertsList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem;">// Sem alertas</p>';
         return;
     }
     
-    alerts.forEach(alert => {
+    alerts.forEach(function(alert) {
         const alertEl = document.createElement('div');
-        alertEl.className = `alert-item ${alert.type === 'overdue' || alert.type === 'today' ? 'urgent' : ''}`;
-        alertEl.innerHTML = `
-            <strong>${alert.task.title}</strong>
-            <small>⚠ ${alert.message}</small><br>
-            <small style="opacity: 0.7">Criada: ${alert.createdOn}</small>
-        `;
-        alertEl.onclick = () => {
+        alertEl.className = 'alert-item' + (alert.type === 'overdue' || alert.type === 'today' ? ' urgent' : '');
+        alertEl.innerHTML = '<strong>' + alert.task.title + '</strong><small>⚠ ' + alert.message + '</small><br><small style="opacity: 0.7">Criada: ' + alert.createdOn + '</small>';
+        alertEl.onclick = function() {
             const createdDate = parseLocalDate(alert.task.createdDate);
             state.selectedDate = createdDate;
             renderCalendar();
@@ -632,29 +528,28 @@ function renderAlerts() {
 
 // Renderizar tarefas
 function renderTasks() {
+    if (!DOM.tasksList) return;
+    
     const user = getCurrentUser();
     DOM.tasksList.innerHTML = '';
     
     const dateOpts = { weekday: 'long', day: 'numeric', month: 'long' };
-    DOM.selectedDateLabel.textContent = `REGISTRO: ${state.selectedDate.toLocaleDateString('pt-BR', dateOpts)}`;
+    DOM.selectedDateLabel.textContent = 'REGISTRO: ' + state.selectedDate.toLocaleDateString('pt-BR', dateOpts);
     
-    const tasks = user.tasks ? Object.values(user.tasks) : [];
-    
-    // Filtrar tarefas CRIADAS neste dia
-    let filteredTasks = tasks.filter(t => {
+    let tasks = user.tasks.filter(function(t) {
         const createdDate = parseLocalDate(t.createdDate);
         return isSameDate(createdDate, state.selectedDate);
     });
     
-    if (state.filter === 'pending') filteredTasks = filteredTasks.filter(t => !t.completed);
-    if (state.filter === 'done') filteredTasks = filteredTasks.filter(t => t.completed);
+    if (state.filter === 'pending') tasks = tasks.filter(function(t) { return !t.completed; });
+    if (state.filter === 'done') tasks = tasks.filter(function(t) { return t.completed; });
     
-    if (filteredTasks.length === 0) {
+    if (tasks.length === 0) {
         DOM.tasksList.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted);">Nenhuma tarefa registrada neste dia</div>';
         return;
     }
     
-    filteredTasks.sort((a, b) => {
+    tasks.sort(function(a, b) {
         if (a.completed !== b.completed) return a.completed - b.completed;
         
         const priorityOrder = { high: 3, medium: 2, low: 1 };
@@ -666,14 +561,14 @@ function renderTasks() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    filteredTasks.forEach(task => {
+    tasks.forEach(function(task) {
         const status = getTaskStatus(task);
         const dueDate = parseLocalDate(task.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
         
         const card = document.createElement('div');
-        card.className = `task-card priority-${task.priority || 'medium'}`;
+        card.className = 'task-card priority-' + (task.priority || 'medium');
         
         if (!task.completed && diffDays <= 2) {
             card.classList.add('urgent');
@@ -687,51 +582,20 @@ function renderTasks() {
         
         let subtasksHtml = '';
         if (task.subtasks && task.subtasks.length > 0) {
-            const completedSubs = task.subtasks.filter(s => s.completed).length;
+            const completedSubs = task.subtasks.filter(function(s) { return s.completed; }).length;
             const totalSubs = task.subtasks.length;
             const progress = Math.round((completedSubs / totalSubs) * 100);
             
-            subtasksHtml = `
-                <div class="subtasks-toggle" onclick="toggleSubtasksExpand('${task.id}')">
-                    <span>📋 Sub-rotinas (${completedSubs}/${totalSubs})</span>
-                    <span class="subtasks-count">${progress}% concluído</span>
-                    <span class="arrow">▼</span>
-                </div>
-                <div id="subtasks-${task.id}" class="subtasks-wrapper">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin: 10px 0 5px 0;">
-                        Progresso: ${progress}%
-                    </div>
-            `;
-            task.subtasks.forEach(sub => {
-                subtasksHtml += `
-                    <div class="subtask-item ${sub.completed ? 'completed' : ''}">
-                        <input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="toggleSubtask('${task.id}', '${sub.id}')">
-                        <span>${sub.title}</span>
-                    </div>
-                `;
+            subtasksHtml = '<div class="subtasks-toggle" onclick="toggleSubtasksExpand(\'' + task.id + '\')"><span>📋 Sub-rotinas (' + completedSubs + '/' + totalSubs + ')</span><span class="subtasks-count">' + progress + '% concluído</span><span class="arrow">▼</span></div><div id="subtasks-' + task.id + '" class="subtasks-wrapper"><div style="font-size: 0.75rem; color: var(--text-muted); margin: 10px 0 5px 0;">Progresso: ' + progress + '%</div>';
+            
+            task.subtasks.forEach(function(sub) {
+                subtasksHtml += '<div class="subtask-item' + (sub.completed ? ' completed' : '') + '"><input type="checkbox"' + (sub.completed ? ' checked' : '') + ' onchange="toggleSubtask(\'' + task.id + '\', \'' + sub.id + '\')"><span>' + sub.title + '</span></div>';
             });
-            subtasksHtml += `</div>`;
+            subtasksHtml += '</div>';
         }
         
-        card.innerHTML = `
-            <div class="task-main">
-                <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')">
-                <div class="task-info">
-                    <div class="task-title" style="${task.completed ? 'text-decoration:line-through; opacity:0.5' : ''}">${task.title}</div>
-                    <div class="task-meta">
-                        <span class="badge ${status.class}">${status.label}</span>
-                        <span class="priority-badge ${task.priority || 'medium'}">${priorityText[task.priority || 'medium']}</span>
-                        <span>📅 Vence: ${parseLocalDate(task.dueDate).toLocaleDateString('pt-BR')}</span>
-                        ${!task.completed && diffDays <= 2 ? '<span style="color:var(--warning); font-weight:600;">⚠ URGENTE</span>' : ''}
-                    </div>
-                    ${subtasksHtml}
-                </div>
-                <div class="actions">
-                    <button type="button" class="btn-icon" onclick="openEditModal('${task.id}')" title="Editar">✎</button>
-                    <button type="button" class="btn-icon" onclick="deleteTask('${task.id}')" title="Excluir" style="color:var(--danger)">🗑</button>
-                </div>
-            </div>
-        `;
+        card.innerHTML = '<div class="task-main"><input type="checkbox" class="task-checkbox"' + (task.completed ? ' checked' : '') + ' onchange="toggleTask(\'' + task.id + '\')"><div class="task-info"><div class="task-title" style="' + (task.completed ? 'text-decoration:line-through; opacity:0.5' : '') + '">' + task.title + '</div><div class="task-meta"><span class="badge ' + status.class + '">' + status.label + '</span><span class="priority-badge ' + (task.priority || 'medium') + '">' + priorityText[task.priority || 'medium'] + '</span><span>📅 Vence: ' + parseLocalDate(task.dueDate).toLocaleDateString('pt-BR') + '</span>' + (!task.completed && diffDays <= 2 ? '<span style="color:var(--warning); font-weight:600;">⚠ URGENTE</span>' : '') + '</div>' + subtasksHtml + '</div><div class="actions"><button type="button" class="btn-icon" onclick="openEditModal(\'' + task.id + '\')" title="Editar">✎</button><button type="button" class="btn-icon" onclick="deleteTask(\'' + task.id + '\')" title="Excluir" style="color:var(--danger)">🗑</button></div></div>';
+        
         DOM.tasksList.appendChild(card);
     });
     
@@ -746,9 +610,7 @@ function updateStats() {
     
     let overdue = 0, near = 0, todoToday = 0, done = 0;
     
-    const tasks = user.tasks ? Object.values(user.tasks) : [];
-    
-    tasks.forEach(task => {
+    user.tasks.forEach(function(task) {
         if (task.completed) {
             done++;
             return;
@@ -763,10 +625,10 @@ function updateStats() {
         else if (diffDays <= 3) near++;
     });
     
-    DOM.stats.overdue.textContent = overdue;
-    DOM.stats.near.textContent = near;
-    DOM.stats.today.textContent = todoToday;
-    DOM.stats.done.textContent = done;
+    if (DOM.stats.overdue) DOM.stats.overdue.textContent = overdue;
+    if (DOM.stats.near) DOM.stats.near.textContent = near;
+    if (DOM.stats.today) DOM.stats.today.textContent = todoToday;
+    if (DOM.stats.done) DOM.stats.done.textContent = done;
 }
 
 // Verificar datas iguais
@@ -795,18 +657,18 @@ function getTaskStatus(task) {
 
 // Modal functions
 function openModal(type) {
-    DOM.modals[type].classList.remove('hidden');
+    if (DOM.modals[type]) DOM.modals[type].classList.remove('hidden');
 }
 
 function closeModal(type) {
-    DOM.modals[type].classList.add('hidden');
+    if (DOM.modals[type]) DOM.modals[type].classList.add('hidden');
     if (type === 'task') {
-        DOM.forms.task.reset();
-        DOM.inputs.taskId.value = '';
-        DOM.inputs.subtasksContainer.innerHTML = '';
+        if (DOM.forms.task) DOM.forms.task.reset();
+        if (DOM.inputs.taskId) DOM.inputs.taskId.value = '';
+        if (DOM.inputs.subtasksContainer) DOM.inputs.subtasksContainer.innerHTML = '';
     }
     if (type === 'user') {
-        DOM.forms.user.reset();
+        if (DOM.forms.user) DOM.forms.user.reset();
     }
 }
 
@@ -817,13 +679,11 @@ function closeAllModals() {
 }
 
 // Adicionar sub-tarefa
-function addSubtaskInput(text = '') {
+function addSubtaskInput(text) {
+    text = text || '';
     const div = document.createElement('div');
     div.className = 'subtask-input-row';
-    div.innerHTML = `
-        <input type="text" class="subtask-text" value="${text}" placeholder="Sub-rotina..." autocomplete="off">
-        <button type="button" class="btn-remove-sub" onclick="this.parentElement.remove()">×</button>
-    `;
+    div.innerHTML = '<input type="text" class="subtask-text" value="' + text + '" placeholder="Sub-rotina..." autocomplete="off"><button type="button" class="btn-remove-sub" onclick="this.parentElement.remove()">×</button>';
     DOM.inputs.subtasksContainer.appendChild(div);
 }
 
@@ -841,23 +701,23 @@ function setupEventListeners() {
     
     // Calendário
     if (DOM.buttons.prevMonth) {
-        DOM.buttons.prevMonth.addEventListener('click', () => {
+        DOM.buttons.prevMonth.addEventListener('click', function() {
             state.currentDateView.setMonth(state.currentDateView.getMonth() - 1);
             renderCalendar();
         });
     }
     
     if (DOM.buttons.nextMonth) {
-        DOM.buttons.nextMonth.addEventListener('click', () => {
+        DOM.buttons.nextMonth.addEventListener('click', function() {
             state.currentDateView.setMonth(state.currentDateView.getMonth() + 1);
             renderCalendar();
         });
     }
     
     // Filtros
-    document.querySelectorAll('.filter').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            document.querySelectorAll('.filter').forEach(function(b) { b.classList.remove('active'); });
             e.target.classList.add('active');
             state.filter = e.target.dataset.filter;
             renderTasks();
@@ -866,53 +726,53 @@ function setupEventListeners() {
     
     // Botões de modal - Abrir
     if (DOM.buttons.btnNewUser) {
-        DOM.buttons.btnNewUser.addEventListener('click', () => openModal('user'));
+        DOM.buttons.btnNewUser.addEventListener('click', function() { openModal('user'); });
     }
     
     if (DOM.buttons.btnAddTask) {
-        DOM.buttons.btnAddTask.addEventListener('click', () => {
+        DOM.buttons.btnAddTask.addEventListener('click', function() {
             document.getElementById('modalTitle').textContent = 'Nova Missão';
-            DOM.forms.task.reset();
-            DOM.inputs.taskId.value = '';
-            DOM.inputs.taskCreatedDate.value = getLocalDateString(new Date());
+            if (DOM.forms.task) DOM.forms.task.reset();
+            if (DOM.inputs.taskId) DOM.inputs.taskId.value = '';
+            if (DOM.inputs.taskCreatedDate) DOM.inputs.taskCreatedDate.value = getLocalDateString(new Date());
             const dueDate = new Date();
             dueDate.setDate(dueDate.getDate() + 7);
-            DOM.inputs.taskDueDate.value = getLocalDateString(dueDate);
-            DOM.inputs.subtasksContainer.innerHTML = '';
+            if (DOM.inputs.taskDueDate) DOM.inputs.taskDueDate.value = getLocalDateString(dueDate);
+            if (DOM.inputs.subtasksContainer) DOM.inputs.subtasksContainer.innerHTML = '';
             openModal('task');
         });
     }
     
     if (DOM.buttons.btnAddSubtask) {
-        DOM.buttons.btnAddSubtask.addEventListener('click', () => addSubtaskInput());
+        DOM.buttons.btnAddSubtask.addEventListener('click', function() { addSubtaskInput(''); });
     }
     
     // Botões de modal - Fechar
     if (DOM.buttons.btnCancelUser) {
-        DOM.buttons.btnCancelUser.addEventListener('click', () => closeModal('user'));
+        DOM.buttons.btnCancelUser.addEventListener('click', function() { closeModal('user'); });
     }
     
     if (DOM.buttons.btnCancelTask) {
-        DOM.buttons.btnCancelTask.addEventListener('click', () => closeModal('task'));
+        DOM.buttons.btnCancelTask.addEventListener('click', function() { closeModal('task'); });
     }
     
     if (DOM.buttons.btnCloseUserModal) {
-        DOM.buttons.btnCloseUserModal.addEventListener('click', () => closeModal('user'));
+        DOM.buttons.btnCloseUserModal.addEventListener('click', function() { closeModal('user'); });
     }
     
     if (DOM.buttons.btnCloseTaskModal) {
-        DOM.buttons.btnCloseTaskModal.addEventListener('click', () => closeModal('task'));
+        DOM.buttons.btnCloseTaskModal.addEventListener('click', function() { closeModal('task'); });
     }
     
     // Fechar ao clicar fora do modal
-    window.addEventListener('click', (e) => {
+    window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             e.target.classList.add('hidden');
         }
     });
     
     // Tecla ESC para fechar modais
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeAllModals();
         }
@@ -920,7 +780,7 @@ function setupEventListeners() {
     
     // Formulário de usuário
     if (DOM.forms.user) {
-        DOM.forms.user.addEventListener('submit', (e) => {
+        DOM.forms.user.addEventListener('submit', function(e) {
             e.preventDefault();
             const name = DOM.inputs.newUserName.value.trim();
             if (name) createUser(name);
@@ -929,12 +789,12 @@ function setupEventListeners() {
     
     // Formulário de tarefa
     if (DOM.forms.task) {
-        DOM.forms.task.addEventListener('submit', async (e) => {
+        DOM.forms.task.addEventListener('submit', function(e) {
             e.preventDefault();
             
             const subtasksEls = document.querySelectorAll('.subtask-input-row');
             const subtasks = [];
-            subtasksEls.forEach(el => {
+            subtasksEls.forEach(function(el) {
                 const txt = el.querySelector('.subtask-text').value.trim();
                 if (txt) {
                     subtasks.push({ 
@@ -956,17 +816,12 @@ function setupEventListeners() {
             };
             
             if (DOM.inputs.taskId.value) {
-                await updateTask(DOM.inputs.taskId.value, taskData);
+                updateTask(DOM.inputs.taskId.value, taskData);
             } else {
-                await createTask(taskData);
+                createTask(taskData);
             }
         });
     }
+    
+    console.log('Event listeners configurados com sucesso');
 }
-
-// Cleanup ao fechar página
-window.addEventListener('beforeunload', () => {
-    if (state.firebaseService) {
-        state.firebaseService.cleanup();
-    }
-});
